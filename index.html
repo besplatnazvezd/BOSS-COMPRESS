@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOSS COMPRESS — Ultra Compression</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { background-color: #000000; color: #ffffff; font-family: 'Outfit', sans-serif; }
+        .boss-glass { background: #0a0a0a; border: 1px solid #1a1a1a; }
+        .accent-blue { color: #007bff; }
+        input[type="range"] { -webkit-appearance: none; height: 8px; background: #222; border-radius: 4px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { 
+            -webkit-appearance: none; 
+            width: 24px; 
+            height: 24px; 
+            background: #007bff; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            box-shadow: 0 0 10px #007bff; 
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen py-10 px-4">
+
+    <div class="w-full max-w-lg">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-black italic uppercase tracking-tighter">BOSS <span class="accent-blue">COMPRESS</span></h1>
+            <p class="text-gray-500 text-sm mt-2">Экстремальное сжатие фото без потери качества</p>
+        </div>
+
+        <!-- Зона загрузки -->
+        <div id="drop-zone" class="boss-glass rounded-3xl p-10 text-center border-2 border-dashed border-gray-800 cursor-pointer hover:border-blue-600 transition">
+            <input type="file" id="file-input" class="hidden" accept="image/*">
+            <i class="fa-solid fa-compress text-4xl text-blue-600 mb-4"></i>
+            <p class="font-bold">Нажми сюда или перетащи фото</p>
+            <p class="text-[10px] text-gray-600 uppercase mt-2">Максимальное сжатие в WebP/PNG</p>
+        </div>
+
+        <!-- Панель управления -->
+        <div id="controls" class="hidden mt-8 space-y-6">
+            
+            <!-- Режим -->
+            <div class="boss-glass rounded-2xl p-4 flex items-center justify-between">
+                <span class="text-xs uppercase text-gray-400 font-bold">Режим сжатия:</span>
+                <span id="mode-badge" class="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                    Фото (Макс. сжатие)
+                </span>
+            </div>
+
+            <!-- Слайдер -->
+            <div class="boss-glass rounded-2xl p-6">
+                <div class="flex justify-between mb-2">
+                    <span class="text-xs uppercase text-gray-400">Сила сжатия:</span>
+                    <span id="quality-val" class="text-blue-500 font-bold">80%</span>
+                </div>
+                <input type="range" id="quality" min="10" max="95" value="80" class="w-full">
+            </div>
+
+            <!-- Результаты веса -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="boss-glass rounded-2xl p-4 text-center">
+                    <p class="text-[9px] uppercase text-gray-600">Оригинал</p>
+                    <p id="size-before" class="font-bold">0 MB</p>
+                </div>
+                <div class="boss-glass rounded-2xl p-4 text-center border-blue-900 border">
+                    <p class="text-[9px] uppercase text-blue-500">Сжато</p>
+                    <p id="size-after" class="font-bold text-blue-400">0 MB</p>
+                </div>
+            </div>
+
+            <!-- ОКНО ДЛЯ ПРОСМОТРА ФОТО (СЮДА ВЕРНУЛИ КАРТИНКУ!) -->
+            <div class="boss-glass rounded-3xl p-4 flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden bg-black/40">
+                <span class="text-[9px] uppercase text-gray-600 mb-2 block">Предпросмотр результата:</span>
+                <img id="preview-img" class="max-h-80 rounded-2xl shadow-2xl object-contain" alt="Compressed Preview">
+            </div>
+
+            <button id="download-btn" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-bold uppercase transition active:scale-95">
+                Скачать сжатое фото
+            </button>
+        </div>
+    </div>
+
+    <!-- Скрытый холст для вычислений -->
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        const fileInput = document.getElementById('file-input'),
+              dropZone = document.getElementById('drop-zone'),
+              controls = document.getElementById('controls'),
+              quality = document.getElementById('quality'),
+              qualityVal = document.getElementById('quality-val'),
+              downloadBtn = document.getElementById('download-btn'),
+              canvas = document.getElementById('canvas'),
+              previewImg = document.getElementById('preview-img'),
+              sizeBefore = document.getElementById('size-before'),
+              sizeAfter = document.getElementById('size-after'),
+              modeBadge = document.getElementById('mode-badge');
+
+        let uploadedFile = null;
+        let originalImage = new Image(); // Кэшируем картинку в памяти, чтобы не было лагов
+        let isPNG = false;
+        let currentBlobUrl = null;
+
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+        // 1. Загрузка файла в память ОДИН раз
+        function handleFile(file) {
+            uploadedFile = file;
+            isPNG = file.type === 'image/png';
+            
+            if (isPNG) {
+                quality.value = 85;
+                modeBadge.innerText = "Скриншот (Четкий текст)";
+                modeBadge.className = "bg-green-500/20 text-green-400 border border-green-500/30 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider";
+            } else {
+                quality.value = 75;
+                modeBadge.innerText = "Фото (Макс. сжатие)";
+                modeBadge.className = "bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider";
+            }
+
+            sizeBefore.innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+            
+            // Читаем файл один раз
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    controls.classList.remove('hidden');
+                    compress(); // Первый запуск сжатия
+                };
+                originalImage.src = e.target.result;
+            };
+        }
+
+        // 2. Быстрое сжатие без перезагрузки файла (Работает моментально!)
+        function compress() {
+            if (!originalImage.src) return;
+
+            const ctx = canvas.getContext('2d');
+            canvas.width = originalImage.width;
+            canvas.height = originalImage.height;
+            
+            // Отключаем размытие для скриншотов, чтобы сохранить текст острым
+            ctx.imageSmoothingEnabled = !isPNG;
+            ctx.drawImage(originalImage, 0, 0);
+            
+            const q = quality.value / 100;
+            qualityVal.innerText = quality.value + '%';
+            
+            const targetFormat = isPNG ? 'image/png' : 'image/jpeg';
+            
+            canvas.toBlob((blob) => {
+                sizeAfter.innerText = (blob.size / 1024 / 1024).toFixed(2) + ' MB';
+                
+                // Освобождаем старую память от предыдущего слайда, чтобы телефон не тормозил
+                if (currentBlobUrl) {
+                    URL.revokeObjectURL(currentBlobUrl);
+                }
+                
+                currentBlobUrl = URL.createObjectURL(blob);
+                previewImg.src = currentBlobUrl; // Обновляем фото на экране
+                
+                downloadBtn.onclick = () => {
+                    const link = document.createElement('a');
+                    link.href = currentBlobUrl;
+                    const ext = isPNG ? 'png' : 'jpg';
+                    link.download = `BOSS_COMPRESS.${ext}`;
+                    link.click();
+                };
+            }, targetFormat, q);
+        }
+
+        // Убираем лаги: сжатие происходит плавно при движении ползунка
+        let compressTimeout;
+        quality.oninput = () => {
+            qualityVal.innerText = quality.value + '%';
+            clearTimeout(compressTimeout);
+            // Ждем 30мс остановки пальца, чтобы не спамить процессор лишней работой
+            compressTimeout = setTimeout(compress, 30); 
+        };
+    </script>
+</body>
+</html>
