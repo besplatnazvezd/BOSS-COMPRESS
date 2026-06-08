@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOSS COMPRESS — Экстремальное сжатие</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { 
+            background-color: #050505; 
+            color: #ffffff; 
+            font-family: 'Outfit', sans-serif;
+            background-image: radial-gradient(circle at 50% -20%, #1e293b 0%, #050505 80%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .boss-shadow {
+            box-shadow: 0 0 30px rgba(0, 163, 255, 0.15);
+        }
+        .blue-gradient-text {
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #00c6ff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00c6ff;
+        }
+        .animate-blink { animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4">
+
+    <!-- ЛОГОТИП -->
+    <div class="flex items-center space-x-3 mb-10">
+        <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center boss-shadow">
+            <i class="fa-solid fa-bolt-lightning text-white text-xl"></i>
+        </div>
+        <h1 class="text-3xl font-black tracking-tighter italic uppercase">BOSS <span class="blue-gradient-text">COMPRESS</span></h1>
+    </div>
+
+    <main class="w-full max-w-2xl">
+        
+        <!-- ОПИСАНИЕ -->
+        <div class="text-center mb-8">
+            <h2 class="text-xl font-bold mb-2 uppercase tracking-widest text-blue-400">Технология экстремального сжатия</h2>
+            <p class="text-gray-500 text-sm">Убирай лишний вес, сохраняяBoss-качество. Без загрузки на сервера.</p>
+        </div>
+
+        <!-- ЗОНА ЗАГРУЗКИ -->
+        <div id="drop-zone" class="glass-card rounded-[2rem] p-12 text-center border-2 border-dashed border-blue-500/20 hover:border-blue-500/50 transition-all cursor-pointer group">
+            <input type="file" id="file-input" class="hidden" accept="image/png, image/jpeg, image/webp">
+            <div id="idle-state">
+                <i class="fa-solid fa-file-arrow-down text-5xl text-blue-500 mb-4 group-hover:scale-110 transition-transform"></i>
+                <h3 class="text-lg font-bold">Выбери фото или перетащи его</h3>
+                <p class="text-xs text-gray-600 mt-2 uppercase tracking-tighter">PNG, JPG, WEBP до 50MB</p>
+            </div>
+            
+            <!-- Индикатор процесса (скрыт) -->
+            <div id="loading-state" class="hidden py-4">
+                <div class="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <p class="text-blue-400 font-bold animate-blink uppercase">BOSS сжимает макет...</p>
+            </div>
+        </div>
+
+        <!-- РЕЗУЛЬТАТ (Скрыт) -->
+        <div id="result-area" class="hidden mt-8 space-y-6">
+            
+            <!-- Слайдер качества -->
+            <div class="glass-card rounded-3xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-bold uppercase text-gray-400">Сила сжатия</span>
+                    <span id="quality-label" class="text-blue-500 font-black text-lg">80%</span>
+                </div>
+                <input type="range" id="quality-range" min="5" max="100" value="80" class="w-full">
+                <p class="text-[10px] text-gray-600 mt-3 text-center uppercase tracking-widest">Меньше процент — сильнее сжатие и меньше вес</p>
+            </div>
+
+            <!-- Статистика -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="glass-card rounded-2xl p-5 text-center">
+                    <p class="text-[10px] text-gray-500 uppercase mb-1">Оригинал</p>
+                    <p id="size-before" class="text-xl font-bold">0 MB</p>
+                </div>
+                <div class="glass-card rounded-2xl p-5 text-center border-blue-500/20 border">
+                    <p class="text-[10px] text-blue-500 uppercase mb-1">Сжатый BOSS</p>
+                    <p id="size-after" class="text-xl font-bold text-blue-400">0 MB</p>
+                </div>
+            </div>
+
+            <!-- Процент экономии -->
+            <div id="save-badge" class="bg-blue-600 text-white text-center py-2 rounded-xl font-black uppercase italic tracking-widest text-sm">
+                Экономия места: 0%
+            </div>
+
+            <!-- Превью -->
+            <div class="glass-card rounded-3xl p-4 flex justify-center bg-black/40">
+                <img id="preview" class="max-h-72 rounded-xl shadow-2xl" alt="Preview">
+            </div>
+
+            <!-- Кнопка скачать -->
+            <button id="download-btn" class="glow-button w-full py-5 rounded-2xl font-black text-lg uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-transform">
+                <i class="fa-solid fa-download"></i> Скачать результат
+            </button>
+        </div>
+
+        <!-- ПРАВИЛА -->
+        <div class="mt-12 opacity-30 hover:opacity-100 transition-opacity">
+            <div class="text-[10px] uppercase tracking-widest space-y-2 border-l border-blue-500/50 pl-4">
+                <p>• 100% Приватно: Файлы обрабатываются в памяти браузера.</p>
+                <p>• Ultra Speed: Моментальный результат даже для 4K фото.</p>
+                <p>• Boss Style: Никакой рекламы, только чистая мощь.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-20 text-[10px] text-gray-700 uppercase tracking-[0.3em]">
+        © 2026 BOSS COMPRESS — All Rights Reserved
+    </footer>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const idleState = document.getElementById('idle-state');
+        const loadingState = document.getElementById('loading-state');
+        const resultArea = document.getElementById('result-area');
+        const qualityRange = document.getElementById('quality-range');
+        const qualityLabel = document.getElementById('quality-label');
+        const preview = document.getElementById('preview');
+        const sizeBefore = document.getElementById('size-before');
+        const sizeAfter = document.getElementById('size-after');
+        const saveBadge = document.getElementById('save-badge');
+        const downloadBtn = document.getElementById('download-btn');
+
+        let currentFile = null;
+        let originalImage = null;
+
+        // Открытие выбора файла
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        });
+
+        // Обработка файла
+        function processFile(file) {
+            currentFile = file;
+            idleState.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    sizeBefore.innerText = formatSize(file.size);
+                    compress();
+                    loadingState.classList.add('hidden');
+                    idleState.classList.remove('hidden');
+                    resultArea.classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Основная функция сжатия
+        function compress() {
+            if (!originalImage) return;
+
+            const quality = qualityRange.value / 100;
+            qualityLabel.innerText = qualityRange.value + '%';
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = originalImage.width;
+            canvas.height = originalImage.height;
+            ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+
+            // Сжимаем в формат WebP для максимальной эффективности (или JPEG если не поддерживается)
+            const mimeType = currentFile.type === 'image/png' ? 'image/png' : 'image/jpeg';
+            
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                preview.src = url;
+                sizeAfter.innerText = formatSize(blob.size);
+
+                const save = Math.round(((currentFile.size - blob.size) / currentFile.size) * 100);
+                saveBadge.innerText = `Экономия места: ${save > 0 ? save : 0}%`;
+
+                downloadBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `BOSS_COMPRESS_${currentFile.name}`;
+                    a.click();
+                };
+            }, 'image/jpeg', quality);
+        }
+
+        // Слушатель слайдера
+        qualityRange.addEventListener('input', compress);
+
+        // Хелпер размера
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + ['Bytes', 'KB', 'MB'][i];
+        }
+
+        // Drag and Drop
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-blue-500'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('border-blue-500'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500');
+            if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
+        });
+    </script>
+</body>
+              </html>
